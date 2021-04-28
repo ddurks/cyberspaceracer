@@ -13,17 +13,25 @@ class Racer extends Phaser.Scene {
         this.camcnr = 0;
         this.camseg = 0;
         this.camx = 0; this.camy = 0; this.camz = 0;
-        this.rectangles = new Array();
+        this.segments = new Array();
+    }
+
+    preload() {
+        this.load.image('test', 'assets/clown_online_.png');
     }
 
     create() {
-        this.generateRectangles();
+        this.generateSegments();
     }
 
-    generateRectangles() {
+    generateSegments() {
         for(let i = 0; i < 30; i++) {
-            let rect = this.add.rectangle(0, 0, 1, 10, 0xffffff);
-            this.rectangles.push(rect);
+            let rect = this.add.rectangle(0, 0, 1, 5, 0xffffff);
+            let road = this.add.polygon(0,0, [], 0xffffff);
+            this.segments.push({
+                rect: rect,
+                road: road
+            });
         }
     }
 
@@ -42,25 +50,44 @@ class Racer extends Phaser.Scene {
         let cnr = this.camcnr
         let seg = this.camseg;
 
+        let [ ppx, ppy, pscale ] = this.project(x, y, z);
+
+        let sp = new Array();
+
+        let righttree = true;
         for (let i = 0; i < 30; i++) {
-            let [ px, py, scale ] = this.project(x, y, z);
-
-            let width = 3 * scale;
-
-            let sumct = this.getsumct(cnr, seg);
-
-            // line(px-width, py, px+width, py)
-            this.rectangles[i].x = px;
-            this.rectangles[i].y = py;
-            this.rectangles[i].displayWidth = 2*width;
-
             x += xd;
             y += yd;
             z += zd;
+            
+            let [ px, py, scale ] = this.project(x, y, z);
+
+            let sumct = this.getsumct(cnr, seg);
+            this.drawroad(i,px,py,scale,ppx,ppy,pscale,sumct);
+
+            if ((sumct%3)===0) {
+                let tx = px - 4.5 * scale;
+                let ty = py;
+                let tw = 1.5*scale;
+                let th = 3*scale;
+                if(righttree) {
+                    tx = px * 4.5 * scale;
+                    righttree = !righttree;
+                }
+                sp.push({
+                    x:tx,y:ty,w:tw,h:th
+                })
+            }
 
             xd+=this.road[cnr].tu;
 
             [ cnr, seg ] = this.advance(cnr, seg);
+
+            // -- track previous projected position
+            // ppx,ppy,pscale=px,py,scale
+            ppx = px;
+            ppy = py;
+            pscale = scale;
         }
     }
 
@@ -96,6 +123,23 @@ class Racer extends Phaser.Scene {
         return [ x + z * xd, y + z * yd, z ];
     }
 
+    drawroad(i, x1,y1,scale1,x2,y2,scale2,sumct) {
+        if (Math.floor(y2) < Math.ceil(y1)) {
+            return;
+        }
+
+        let gndcol = (sumct%6)>=3 ? 0x00008b : 0x0000cd;
+        this.drawRect(i, GAME.SIZE/2, y1, GAME.SIZE, Math.floor(y2) - Math.ceil(y1), gndcol);
+    }
+
+    drawRect(i, px, py, width, height, color) {
+        this.segments[i].rect.x = px;
+        this.segments[i].rect.y = py;
+        this.segments[i].rect.displayWidth = width;
+        this.segments[i].rect.displayHeight = height <= 250 ? height : 250;
+        this.segments[i].rect.fillColor = color;    
+    }
+
     getsumct(cnr, seg) {
         return this.road[cnr].sumct+seg-1;
     }
@@ -106,6 +150,7 @@ const GAME = {
 }
 
 var gameConfig = {
+    backgroundColor: 0x00008b,
 	render: {
 		roundPixels: true,
 		pixelArt: true,
