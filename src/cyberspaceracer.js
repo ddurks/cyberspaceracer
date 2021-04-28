@@ -27,10 +27,8 @@ class Racer extends Phaser.Scene {
     generateSegments() {
         for(let i = 0; i < 30; i++) {
             let rect = this.add.rectangle(0, 0, 1, 5, 0xffffff);
-            let road = this.add.polygon(0,0, [], 0xffffff);
             this.segments.push({
-                rect: rect,
-                road: road
+                rect: rect
             });
         }
     }
