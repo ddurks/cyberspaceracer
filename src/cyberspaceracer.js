@@ -2,16 +2,16 @@ class Racer extends Phaser.Scene {
     constructor() {
         super('Racer');
         this.road=[
-            {ct:10,tu:0, sumct: 0},
-            {ct:6,tu:-1, sumct: 10},
-            {ct:8,tu:0, sumct: 16},
-            {ct:4,tu:1.5, sumct: 24},
-            {ct:10,tu:0.2, sumct: 28},
-            {ct:4,tu:0, sumct: 38},
-            {ct:5,tu:-1, sumct: 42},
+            {ct:10,tu:0},
+            {ct:6,tu:-0.25},
+            {ct:8,tu:0},
+            {ct:4,tu:0.375},
+            {ct:10,tu:0.05},
+            {ct:4,tu:0},
+            {ct:5,tu:-0.25},
         ];
-        this.camcnr = 0;
-        this.camseg = 0;
+        this.camcnr = 1;
+        this.camseg = 1;
         this.camx = 0; this.camy = 0; this.camz = 0;
         this.segments = new Array();
     }
@@ -22,13 +22,20 @@ class Racer extends Phaser.Scene {
 
     create() {
         this.generateSegments();
+        this.sumct = 0;
+        this.road.forEach(cnr => {
+            cnr.sumct = this.sumct;
+            this.sumct += cnr.ct;
+        })
     }
 
     generateSegments() {
         for(let i = 0; i < 30; i++) {
-            let rect = this.add.rectangle(0, 0, 1, 5, 0xffffff);
+            let ground = this.add.rectangle(0, 0, 1, 5, 0xffffff);
+            let road = this.add.rectangle(0, 0, 1, 5, 0xffffff);
             this.segments.push({
-                rect: rect
+                ground: ground,
+                road: road
             });
         }
     }
@@ -42,13 +49,14 @@ class Racer extends Phaser.Scene {
         let [cx, cy, cz] = this.skew(this.camx, this.camy, this.camz, xd, yd);
 
         let x = -cx;
-        let y = -cy + 1;
-        let z = -cz + 1;
+        let y = -cy + 2;
+        let z = -cz + 2;
 
         let cnr = this.camcnr
         let seg = this.camseg;
 
         let [ ppx, ppy, pscale ] = this.project(x, y, z);
+        let [ px, py, scale ] = this.project(x, y, z);
 
         let sp = new Array();
 
@@ -58,10 +66,16 @@ class Racer extends Phaser.Scene {
             y += yd;
             z += zd;
             
-            let [ px, py, scale ] = this.project(x, y, z);
+            [ px, py, scale ] = this.project(x, y, z);
 
             let sumct = this.getsumct(cnr, seg);
+
             this.drawroad(i,px,py,scale,ppx,ppy,pscale,sumct);
+            // line(px-width, py, px+width, py)
+            let width = 3 * scale;
+            this.segments[i].road.x = px;
+            this.segments[i].road.y = py;
+            this.segments[i].road.displayWidth = 2*width;
 
             if ((sumct%3)===0) {
                 let tx = px - 4.5 * scale;
@@ -91,13 +105,18 @@ class Racer extends Phaser.Scene {
 
     update() {
         this.draw();
-        this.camz += 0.1;
+        this.camz += 0.3;
         if (this.camz > 1) {
             this.camz-=1
             let [ tempcamcnr, tempcamseg ] = this.advance(this.camcnr, this.camseg);
             this.camcnr = tempcamcnr;
             this.camseg = tempcamseg;
         }
+    }
+
+    project(x, y, z) {
+        let scale = (GAME.SIZE/2)/z;
+        return [ x * scale + (GAME.SIZE/2), y * scale + (GAME.SIZE/2), scale ];
     }
 
     advance(cnr, seg) {
@@ -112,11 +131,6 @@ class Racer extends Phaser.Scene {
         return [ cnr, seg ];
     }
 
-    project(x, y, z) {
-        let scale = (GAME.SIZE/2)/z;
-        return [ x * scale + (GAME.SIZE/2), y * scale + (GAME.SIZE/2), scale ];
-    }
-
     skew(x, y, z, xd, yd) {
         return [ x + z * xd, y + z * yd, z ];
     }
@@ -128,14 +142,23 @@ class Racer extends Phaser.Scene {
 
         let gndcol = (sumct%6)>=3 ? 0x00008b : 0x0000cd;
         this.drawRect(i, GAME.SIZE/2, y1, GAME.SIZE, Math.floor(y2) - Math.ceil(y1), gndcol);
+        //this.drawRoad(i, GAME.SIZE/2, y1, 3*scale1, Math.floor(y2) - Math.ceil(y1), 0x00ffff);
     }
 
     drawRect(i, px, py, width, height, color) {
-        this.segments[i].rect.x = px;
-        this.segments[i].rect.y = py;
-        this.segments[i].rect.displayWidth = width;
-        this.segments[i].rect.displayHeight = height <= 250 ? height : 250;
-        this.segments[i].rect.fillColor = color;    
+        this.segments[i].ground.x = px;
+        this.segments[i].ground.y = py;
+        this.segments[i].ground.displayWidth = width;
+        this.segments[i].ground.displayHeight = height <= 250 ? height : 250;
+        this.segments[i].ground.fillColor = color;    
+    }
+
+    drawRoad(i, px, py, width, height, color) {
+        this.segments[i].road.x = px;
+        this.segments[i].road.y = py;
+        this.segments[i].road.displayWidth = width;
+        this.segments[i].road.displayHeight = height <= 250 ? height : 250;
+        this.segments[i].road.fillColor = color;    
     }
 
     getsumct(cnr, seg) {
